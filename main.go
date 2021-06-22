@@ -3,10 +3,10 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/mux"
 	"html/template"
 	"net/http"
-
-	_ "github.com/go-sql-driver/mysql"
 )
 
 type Article struct {
@@ -15,12 +15,13 @@ type Article struct {
 }
 
 var posts = []Article{}
+var showPost = Article{}
 
 func index(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("templates/index.html", "templates/header.html", "templates/footer.html")
 
 	if err != nil {
-		fmt.Fprintf(w, err.Error())
+		panic(err)
 	}
 
 	db, err := sql.Open("mysql", "root:root@tcp(127.0.0.1:3306)/golang")
@@ -53,7 +54,7 @@ func create(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("templates/create.html", "templates/header.html", "templates/footer.html")
 
 	if err != nil {
-		fmt.Fprintf(w, err.Error())
+		panic(err)
 	}
 
 	t.ExecuteTemplate(w, "create", nil)
@@ -84,10 +85,48 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func show_post(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	t, err := template.ParseFiles("templates/show.html", "templates/header.html", "templates/footer.html")
+
+	if err != nil {
+		panic(err)
+	}
+
+	db, err := sql.Open("mysql", "root:root@tcp(127.0.0.1:3306)/golang")
+	if err != nil {
+		panic(err)
+	}
+
+	defer db.Close()
+	res, err := db.Query(fmt.Sprintf("SELECT * FROM `articles` WHERE `id`='%s'", vars["id"]))
+	if err != nil {
+		panic(err)
+	}
+
+	showPost = Article{}
+
+	for res.Next() {
+		var post Article
+		err := res.Scan(&post.Id, &post.Title, &post.Anons, &post.FullText)
+		if err != nil {
+			panic(err)
+		}
+		showPost = post
+	}
+
+	t.ExecuteTemplate(w, "show", showPost)
+}
+
 func handleFunc() {
-	http.HandleFunc("/", index)
-	http.HandleFunc("/create", create)
-	http.HandleFunc("/save_article", save_article)
+	router := mux.NewRouter()
+
+	router.HandleFunc("/", index).Methods("GET")
+	router.HandleFunc("/create", create).Methods("GET")
+	router.HandleFunc("/save_article", save_article).Methods("POST")
+	router.HandleFunc("/post/{id:[0-9]+}", show_post).Methods("GET")
+	http.Handle("/", router)
 	http.ListenAndServe(":8080", nil)
 }
 

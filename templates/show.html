@@ -1,0 +1,22 @@
+{{define "show"}} 
+
+{{template "header"}}
+
+    <main class="px-3 idk-bootstrap">
+            <h1 class="cover-heading">{{.Title}}</h1>
+            <p class="lead">
+                  {{ .FullText }}
+            </p>
+
+
+           <p class="lead"> <a class="btn btn-lg btn-secondary" href="/">Назад</a></p>
+           <style>
+            .idk-bootstrap{
+                margin-top: 100px;
+                margin-bottom: 200px;
+            }
+        </style>
+        </main>
+    
+{{template "footer"}}
+{{end}}
